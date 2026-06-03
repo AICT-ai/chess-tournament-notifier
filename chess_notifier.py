@@ -4,7 +4,7 @@ import time
 import os
 from telegram import Bot
 from bs4 import BeautifulSoup
-
+print(get_tournaments())
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
