@@ -3,9 +3,10 @@ import json
 import time
 import os
 from telegram import Bot
+from bs4 import BeautifulSoup
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+BOT_TOKEN = os.getenv("bot8842981825:AAGJ7W4lHLWNKrqIHW5HgQqFXGdW64Tk-MQ")
+CHAT_ID = os.getenv("7643653960")
 
 bot = Bot(token=BOT_TOKEN)
 
@@ -25,10 +26,36 @@ def save_seen(seen):
         json.dump(list(seen), f)
 
 
+# 🔥 TSF İZMİR HTML SCRAPER
 def get_tournaments():
-    url = "https://lichess.org/api/tournament"
+    url = "https://izmir.tsf.org.tr/turnuvalar"
     r = requests.get(url)
-    return r.json().get("created", [])
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    tournaments = []
+
+    for a in soup.find_all("a"):
+        href = a.get("href")
+        title = a.text.strip()
+
+        if not href:
+            continue
+
+        # TSF turnuva linklerini filtrele
+        if "turnuva" in href or "etkinlik" in href:
+            if not href.startswith("http"):
+                href = "https://izmir.tsf.org.tr" + href
+
+            tid = href  # unique ID olarak URL kullanıyoruz
+
+            if title:
+                tournaments.append({
+                    "id": tid,
+                    "fullName": title,
+                    "url": href
+                })
+
+    return tournaments
 
 
 def send_message(text):
@@ -38,16 +65,23 @@ def send_message(text):
 def main():
     seen = load_seen()
 
+    print("Bot started... TSF İzmir tracking active")
+
     while True:
         tournaments = get_tournaments()
+
+        print("Found:", len(tournaments))
 
         for t in tournaments:
             tid = t["id"]
 
             if tid not in seen:
                 name = t.get("fullName", "Chess Tournament")
+                url = t.get("url")
 
-                send_message(f"♟ Yeni turnuva:\n{name}\nhttps://lichess.org/tournament/{tid}")
+                send_message(
+                    f"♟ Yeni Turnuva!\n{name}\n{url}"
+                )
 
                 seen.add(tid)
                 save_seen(seen)
