@@ -5,8 +5,12 @@ import os
 from telegram import Bot
 from bs4 import BeautifulSoup
 
-BOT_TOKEN = os.getenv("bot8842981825:AAGJ7W4lHLWNKrqIHW5HgQqFXGdW64Tk-MQ")
-CHAT_ID = os.getenv("7643653960")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+
+# 🔥 küçük güvenlik: bot başlamasın diye kontrol
+if not BOT_TOKEN or not CHAT_ID:
+    raise ValueError("BOT_TOKEN veya CHAT_ID eksik!")
 
 bot = Bot(token=BOT_TOKEN)
 
@@ -26,10 +30,13 @@ def save_seen(seen):
         json.dump(list(seen), f)
 
 
-# 🔥 TSF İZMİR HTML SCRAPER
 def get_tournaments():
     url = "https://izmir.tsf.org.tr/turnuvalar"
-    r = requests.get(url)
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    r = requests.get(url, headers=headers, timeout=10)
     soup = BeautifulSoup(r.text, "html.parser")
 
     tournaments = []
@@ -38,22 +45,18 @@ def get_tournaments():
         href = a.get("href")
         title = a.text.strip()
 
-        if not href:
+        if not href or not title:
             continue
 
-        # TSF turnuva linklerini filtrele
         if "turnuva" in href or "etkinlik" in href:
             if not href.startswith("http"):
                 href = "https://izmir.tsf.org.tr" + href
 
-            tid = href  # unique ID olarak URL kullanıyoruz
-
-            if title:
-                tournaments.append({
-                    "id": tid,
-                    "fullName": title,
-                    "url": href
-                })
+            tournaments.append({
+                "id": href,
+                "fullName": title,
+                "url": href
+            })
 
     return tournaments
 
@@ -68,23 +71,25 @@ def main():
     print("Bot started... TSF İzmir tracking active")
 
     while True:
-        tournaments = get_tournaments()
+        try:
+            tournaments = get_tournaments()
 
-        print("Found:", len(tournaments))
+            print("Found:", len(tournaments))
 
-        for t in tournaments:
-            tid = t["id"]
+            for t in tournaments:
+                tid = t["id"]
 
-            if tid not in seen:
-                name = t.get("fullName", "Chess Tournament")
-                url = t.get("url")
+                if tid not in seen:
+                    name = t["fullName"]
+                    url = t["url"]
 
-                send_message(
-                    f"♟ Yeni Turnuva!\n{name}\n{url}"
-                )
+                    send_message(f"♟ Yeni Turnuva!\n{name}\n{url}")
 
-                seen.add(tid)
-                save_seen(seen)
+                    seen.add(tid)
+                    save_seen(seen)
+
+        except Exception as e:
+            print("Error:", e)
 
         time.sleep(60)
 
